@@ -1,0 +1,250 @@
+@model Quodery.Web.Pages.Sessions.DetailsModel
+@using Quodery.Web.Pages.Sessions
+@{
+    var run = Model.Run!;
+    var id = run.Root.Id;
+    var locked = run.Locked;
+    var errorMessage = Model.ErrorMessage ?? run.Batch?.Error;
+}
+@* site.js replaces this whenever data-version changes, and opens data-finished-tab once the run stops being busy. *@
+<div id="discovery-workspace" data-live="@Url.Page("/Sessions/Details", "Live", new { id })" data-live-interval="@(locked ? 2500 : 10000)"
+    data-version="@run.Version" data-busy="@(locked ? "true" : "false")" data-finished-tab="@run.FinishedTab" data-tabs-key="quodery.resultTab.@id">
+    <header class="sessionHeader">
+        <div>
+            <p class="eyebrow">TEST SESSION</p>
+            <h1 id="discovery-goal">@run.Goal</h1>
+            @if (run.Behaviour is { } behaviour)
+            {
+                <p id="discovery-behaviour" class="sessionBehaviour">Behaviour: @behaviour</p>
+            }
+            <p id="discovery-time" class="sessionTime">Started @Display.Time(run.Root.Session.CreatedAt)</p>
+        </div>
+        <span id="discovery-run-status" class="statusBadge" data-status="@(run.Busy ? "running" : "completed")" aria-live="polite">@run.BadgeText</span>
+    </header>
+    @if (errorMessage is not null)
+    {
+        <p class="errorPanel" id="discovery-error" role="alert">@errorMessage</p>
+    }
+
+    @if (run.ShowBanner)
+    {
+        <section class="discoveryRunning" id="discovery-running-panel" aria-labelledby="discovery-running-title">
+            <span class="discoverySpinner" aria-hidden="true"></span>
+            <div><h2 id="discovery-running-title">@run.BannerTitle</h2><p id="discovery-running-message" aria-live="polite">@run.BannerMessage</p></div>
+            <form method="post" asp-page="/Sessions/Details" asp-page-handler="Stop" asp-route-id="@id">
+                <input type="hidden" name="stepId" value="@(run.BannerStep?.Id ?? run.Batch?.CurrentSessionId)" />
+                <button class="secondaryButton" id="stop-active-review" type="submit" data-autofocus data-busy-label="Stopping…">@run.StopLabel</button>
+            </form>
+            @if (run.QuestionStep is { } asking && asking.Question() is { } question)
+            {
+                <form class="inlineReviewQuestion" id="review-question-form" method="post" asp-page="/Sessions/Details" asp-page-handler="Answer" asp-route-id="@id">
+                    <input type="hidden" name="stepId" value="@asking.Id" />
+                    <input type="hidden" name="questionId" value="@question.QuestionId" />
+                    <label for="review-question-answer" id="review-question-prompt">@(string.IsNullOrWhiteSpace(question.Prompt) ? "What else should this review consider?" : question.Prompt)</label>
+                    <textarea id="review-question-answer" name="answer" rows="2" maxlength="2000" required></textarea>
+                    <button class="secondaryButton" id="review-question-submit" type="submit" data-busy-label="Sending…">Continue</button>
+                </form>
+            }
+        </section>
+    }
+
+    <div id="discovery-content" inert="@run.ShowBanner">
+        <section class="sessionResults" aria-label="Test session results">
+            <div class="resultTabs" role="tablist" aria-label="Discovery result views">
+                <button id="discovered-tests-tab" type="button" role="tab" aria-controls="discovered-tests-panel" aria-selected="true" tabindex="0">Discovered tests</button>
+                <button id="new-tests-tab" type="button" role="tab" aria-controls="new-tests-panel" aria-selected="false" tabindex="-1">Request a test</button>
+                <button id="test-gaps-tab" type="button" role="tab" aria-controls="test-gaps-panel" aria-selected="false" tabindex="-1" aria-label="@(run.GapsFound ? "Test gaps, gaps found" : "Test gaps")">Test gaps @if (run.GapsFound) { <span id="test-gaps-alert" class="tabGapAlert" aria-hidden="true">!</span> }</button>
+                <button id="test-runs-tab" type="button" role="tab" aria-controls="test-runs-panel" aria-selected="false" tabindex="-1">Test Runs</button>
+            </div>
+
+            <div id="discovered-tests-panel" role="tabpanel" aria-labelledby="discovered-tests-tab">
+                <p class="fieldHelp" id="discovery-test-summary">@run.DiscoverySummary</p>
+                <div id="discovery-rounds">
+                    @if (run.LatestRound is { } round)
+                    {
+                        var tests = run.DiscoveredTests;
+                        <section class="contentCard discoveryRound">
+                            @if (tests.Count == ProtocolConstants.MaximumCatalogueTests)
+                            {
+                                <p class="catalogueNotice">Showing 100 relevant tests. Narrow your request for a more focused list.</p>
+                            }
+                            @if (tests.Count == 0)
+                            {
+                                <p class="catalogueSummary">@run.EmptyDiscoveryMessage</p>
+                            }
+                            else
+                            {
+                                <form method="post" asp-page="/Sessions/Details" asp-page-handler="RunTests" asp-route-id="@id" data-selection>
+                                    <input type="hidden" name="roundId" value="@round.Id" />
+                                    <div class="catalogueControls">
+                                        <div class="actions">
+                                            <button class="secondaryButton discoverySelectionButton" type="button" data-select="all">Select all</button>
+                                            <button class="secondaryButton discoverySelectionButton" type="button" data-select="none">Select none</button>
+                                            <button type="submit" disabled="@locked" data-selection-label="Run selected ({0})" data-busy-label="Starting…">Run selected</button>
+                                        </div>
+                                    </div>
+                                    <div class="testCatalogue" data-paginate="10" data-paginate-label="Discovery result pages">
+                                        @for (var index = 0; index < tests.Count; index++)
+                                        {
+                                            <label class="testCard selectableTest">
+                                                <input type="checkbox" id="test-@round.Id-@index" name="testIds" value="@tests[index].Id" />
+                                                <div><p class="testDescription">@tests[index].Description</p></div>
+                                            </label>
+                                        }
+                                    </div>
+                                </form>
+                            }
+                            @if (run.CanRetry)
+                            {
+                                <details class="retryDiscovery" id="retry-discovery">
+                                    <summary class="buttonLink">Retry discovery</summary>
+                                    <div class="changeNotice retryNotice" role="group" aria-labelledby="retry-discovery-warning">
+                                        <p id="retry-discovery-warning">Retry uses the original area and behaviour. It will overwrite the discovery results shown in this session and clear your test selections. Completed test runs will remain available.</p>
+                                        <form class="actions" method="post" asp-page="/Sessions/Details" asp-page-handler="RetryDiscovery" asp-route-id="@id">
+                                            <button type="submit" disabled="@locked" data-busy-label="Retrying…">Retry and replace results</button>
+                                            <button class="secondaryButton" type="button" data-close-details>Cancel</button>
+                                        </form>
+                                    </div>
+                                </details>
+                            }
+                        </section>
+                    }
+                </div>
+            </div>
+
+            <div id="new-tests-panel" role="tabpanel" aria-labelledby="new-tests-tab">
+                <p class="fieldHelp" id="add-test-help">Describe what the new test should check. The agent writes it in the workspace and runs it. It stays there uncommitted until the operator reviews and commits it.</p>
+                <section class="contentCard" id="add-test-panel" aria-label="Add a test">
+                    <form method="post" asp-page="/Sessions/Details" asp-page-handler="AddTest" asp-route-id="@id">
+                        <label for="add-test-description">Description</label>
+                        <textarea id="add-test-description" name="description" maxlength="2000" rows="3" required></textarea>
+                        <div class="actions"><button id="add-discovery-test" type="submit" disabled="@locked" data-busy-label="Requesting…">Request test</button></div>
+                    </form>
+                </section>
+            </div>
+
+            <div id="test-gaps-panel" role="tabpanel" aria-labelledby="test-gaps-tab">
+                <p class="fieldHelp" id="gap-explanation">@run.GapExplanation</p>
+                @if (run.BatchStatus is { } batchStatus)
+                {
+                    <p class="fieldHelp" id="gap-batch-status" role="status">@batchStatus</p>
+                }
+                <div id="gap-results">
+                    <section class="contentCard discoveryRound">
+                        @if (run.GapsFound)
+                        {
+                            <form method="post" asp-page="/Sessions/Details" asp-page-handler="AddGapTests" asp-route-id="@id" data-selection>
+                                <input type="hidden" name="gapSessionId" value="@run.LatestGap!.Id" />
+                                <div class="catalogueControls">
+                                    <div class="actions">
+                                        <button class="secondaryButton discoverySelectionButton" type="button" data-select="all">Select all</button>
+                                        <button class="secondaryButton discoverySelectionButton" type="button" data-select="none">Select none</button>
+                                        <button type="submit" disabled="@locked" data-selection-label="Add and run selected ({0})" data-busy-label="Starting…">Add and run selected</button>
+                                    </div>
+                                </div>
+                                <div class="testCatalogue" data-paginate="10" data-paginate-label="Test gap pages">
+                                    @for (var index = 0; index < run.Gaps.Count; index++)
+                                    {
+                                        <label class="testCard selectableTest">
+                                            <input type="checkbox" id="gap-@run.LatestGap.Id-@index" name="gapIndexes" value="@index" />
+                                            <div><p class="testDescription">@run.Gaps[index]</p></div>
+                                        </label>
+                                    }
+                                </div>
+                            </form>
+                        }
+                        else if (run.NoGapsFound)
+                        {
+                            <span class="gapStatusLabel gapStatusClear" id="no-gaps-label" role="status">No gaps found</span>
+                            <p>No important test gaps were found in this review.</p>
+                        }
+                        else
+                        {
+                            <p class="catalogueSummary">@run.GapReviewSummary</p>
+                            @if (run.CanFindGaps)
+                            {
+                                <form method="post" asp-page="/Sessions/Details" asp-page-handler="FindGaps" asp-route-id="@id">
+                                    <button id="find-discovery-gaps" type="submit" disabled="@locked" data-busy-label="Starting…">Find gaps</button>
+                                </form>
+                            }
+                        }
+                    </section>
+                </div>
+            </div>
+
+            <div id="test-runs-panel" role="tabpanel" aria-labelledby="test-runs-tab">
+                @if (run.TestRuns.Count == 0)
+                {
+                    <div class="testRunsLayout">
+                        <div id="test-runs-list" class="testRunsList" aria-label="Test runs"><p class="emptyState">No test results yet.</p></div>
+                        <section id="test-run-detail" class="testRunDetail" aria-label="Selected test run"><p class="muted">Run a discovered or added test to see its result here.</p></section>
+                    </div>
+                }
+                else
+                {
+                    <div class="testRunsLayout" data-test-runs>
+                        <div id="test-runs-list" class="testRunsList" aria-label="Test runs">
+                            @for (var index = 0; index < run.TestRuns.Count; index++)
+                            {
+                                var item = run.TestRuns[index];
+                                <button type="button" class="testRunRow" data-outcome="@item.Outcome" data-run-key="@item.Key" aria-pressed="@(index == 0 ? "true" : "false")">
+                                    <span class="testRunDescription">@item.Title</span>
+                                    <span class="testRunOutcome">@item.OutcomeLabel</span>
+                                </button>
+                            }
+                        </div>
+                        @for (var index = 0; index < run.TestRuns.Count; index++)
+                        {
+                            var item = run.TestRuns[index];
+                            var completion = item.Completion;
+                            var source = item.IsAdded
+                                ? item.Step.Job?.GapIndex is not null ? "Added from gap" : "Added test"
+                                : "Discovered test";
+                            <section class="testRunDetail" data-run-detail="@item.Key" aria-live="polite" aria-label="Selected test run" hidden="@(index != 0)">
+                                <h2>@item.Title</h2>
+                                <p class="testRunDetailOutcome" data-outcome="@item.Outcome">@item.OutcomeLabel</p>
+                                <dl class="testRunFacts">
+                                    <dt>Ran</dt><dd>@Display.Time(item.Step.CompletedAt() ?? item.Step.Session.CreatedAt)</dd>
+                                    <dt>Code version</dt><dd>@Display.CodeVersion(completion)</dd>
+                                    <dt>Source</dt><dd>@source</dd>
+                                    <dt>Area</dt><dd>@item.Step.Job?.Target</dd>
+                                    @if (item.IsAdded)
+                                    {
+                                        <dt>Full description</dt><dd>@item.Description</dd>
+                                    }
+                                    <dt>Result</dt><dd>@(item.TestStateSummary ?? (string.IsNullOrWhiteSpace(completion.SafeSummary) ? Display.ResultCopy.TryGetValue(completion.ResultCode, out var copy) ? copy.Summary : "Execution finished" : completion.SafeSummary))</dd>
+                                    <dt>@(item.Step.Job?.TestIds?.Count > 1 ? "Selected tests" : "Checks")</dt><dd>@(completion.Tested ? Display.Counts(completion) : "No conclusive execution")</dd>
+                                </dl>
+                                @* A proposed test is not in the suite until the operator merges it, so only discovered tests re-run. *@
+                                @if (!item.IsAdded)
+                                {
+                                    <form method="post" asp-page="/Sessions/Details" asp-page-handler="Rerun" asp-route-id="@id">
+                                        <input type="hidden" name="sourceId" value="@item.SourceId" />
+                                        <input type="hidden" name="testId" value="@item.TestId" />
+                                        <button type="submit" disabled="@locked" data-busy-label="Starting…">Re-run test</button>
+                                    </form>
+                                }
+                            </section>
+                        }
+                    </div>
+                }
+            </div>
+        </section>
+
+        @if (run.Investigations.Count > 0)
+        {
+            <section class="contentCard" id="run-investigations-panel">
+                <h2>Failure investigations</h2>
+                <div id="run-investigations">
+                    @foreach (var investigation in run.Investigations)
+                    {
+                        <div class="createdTestRun">
+                            <p>Failure investigation · @(investigation.Completion()?.SafeSummary ?? Display.StatusLabels.GetValueOrDefault(investigation.Status, "Working"))</p>
+                            <a class="buttonLink secondaryButton" href="@DetailsModel.SessionUrl(investigation.Id)">View details</a>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+    </div>
+</div>

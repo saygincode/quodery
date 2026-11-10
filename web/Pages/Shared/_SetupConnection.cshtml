@@ -1,0 +1,10 @@
+@model Quodery.Web.Pages.SetupModel
+@{
+    var connected = Model.Connection?.Connected == true;
+}
+@* site.js refreshes this while setup waits, and moves on to the last step once the runtime connects. *@
+<div class="connectionCheck" id="setup-connection-check" data-live="@Url.Page("/Setup", "Connection", new { project_id = Model.Project?.Id })" data-live-interval="2500"
+    data-navigate="@(connected ? Model.StepUrl("complete") : null)">
+    <span class="statusIcon pending" aria-hidden="true">…</span>
+    <div><strong>@(connected ? "Runtime connected" : "Looking for the runtime")</strong><p>@(connected ? "Opening the summary…" : "Leave it running while Quodery verifies the connection.")</p></div>
+</div>

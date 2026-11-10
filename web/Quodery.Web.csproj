@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- The server: Razor Pages web app, accounts, workspaces, run history, storage and the runtime hub.
+       The `quodery` executable (cli/) runs it as `quodery server`, and beside a runtime in one process
+       as a serving runtime. -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Quodery.Web</RootNamespace>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../protocol/Quodery.Protocol.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.11" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- wwwroot is embedded in this assembly and served from there, so the executable needs no files
+         beside it; as content it would become static web assets published next to the executable. -->
+    <Content Remove="wwwroot/**" />
+    <EmbeddedResource Include="wwwroot/**" />
+  </ItemGroup>
+</Project>

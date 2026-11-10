@@ -1,0 +1,42 @@
+@model Quodery.Web.Pages.Readiness
+@{
+    var (state, icon, iconClass, title) = Model switch
+    {
+        { Project: null } or { NeedsSetup: true } => ("needsSetup", "!", "statusIcon warning",
+            Model.ServesRuntime ? "Starting" : Model.Project is null ? "No workspaces yet" : "Needs setup"),
+        { IsReady: true } => ("ready", "✓", "statusIcon success", "Ready"),
+        _ => ("offline", "×", "statusIcon mutedIcon", "Offline")
+    };
+}
+@* Refreshed in place by site.js; data-ready enables the forms that need a connected runtime. *@
+<section class="readinessPanel @state" id="readiness-panel" aria-live="polite" aria-labelledby="readiness-title"
+    data-live="@Url.Page("/Index", "Readiness", new { project_id = Model.Project?.Id })" data-live-interval="@(Model.ServesRuntime && !Model.IsReady ? 2500 : 10000)" data-ready="@(Model.IsReady ? "true" : "false")">
+    <span class="@iconClass" id="readiness-icon" aria-hidden="true">@icon</span>
+    <div>
+        <strong id="readiness-title">@title</strong>
+        <p id="readiness-message">
+            @if (Model.ServesRuntime && (Model.Project is null || Model.NeedsSetup))
+            {
+                <text>This server's runtime is starting and connecting its workspace.</text>
+            }
+            else if (Model.Project is null)
+            {
+                if (Model.IsAdmin) { <text>Your account is ready. <a asp-page="/Setup">Create your first workspace</a>.</text> }
+                else { <text>Ask an administrator to create a workspace.</text> }
+            }
+            else if (Model.NeedsSetup)
+            {
+                if (Model.IsAdmin) { <text>This workspace is not connected yet. <a asp-page="/Setup" asp-route-project_id="@Model.Project.Id">Continue workspace setup</a>.</text> }
+                else { <text>An administrator needs to finish setting up this workspace.</text> }
+            }
+            else if (Model.IsReady)
+            {
+                <text>The workspace is connected and ready.</text>
+            }
+            else
+            {
+                <text>The workspace connection is offline. You can prepare a check, but it cannot start until the runtime reconnects.</text>
+            }
+        </p>
+    </div>
+</section>

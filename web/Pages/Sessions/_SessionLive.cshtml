@@ -1,0 +1,139 @@
+@model Quodery.Web.Pages.Sessions.DetailsModel
+@using Quodery.Web.Pages.Sessions
+@{
+    var view = Model.Single!;
+    var id = view.Id;
+    var active = view.Session.IsActive;
+}
+@* site.js replaces this whenever data-version changes. While the session runs, data-events says when to look. *@
+<div id="session-workspace" data-live="@Url.Page("/Sessions/Details", "Live", new { id })" data-live-interval="@(active ? 5000 : 30000)"
+    data-version="@view.Version" data-events="@(active ? Url.Page("/Sessions/Details", "Events", new { id }) : null)">
+    <header class="sessionHeader">
+        <div><p class="eyebrow" id="task-label">@Display.TaskName(view.Job?.Type)</p><h1 id="session-goal">@view.Session.Session.Goal</h1><p class="sessionTime" id="session-time">Started @Display.Time(view.Session.Session.CreatedAt)</p></div>
+        <div class="headerActions">
+            <span class="statusBadge" id="session-status" data-status="@view.StatusValue" aria-live="polite">@view.StatusText</span>
+            @if (view.CanStop)
+            {
+                <form method="post" asp-page="/Sessions/Details" asp-page-handler="Stop" asp-route-id="@id">
+                    <button class="secondaryButton" id="stop-button" type="submit" data-busy-label="Stopping…">Stop</button>
+                </form>
+            }
+        </div>
+    </header>
+    @if (Model.ErrorMessage is { } error)
+    {
+        <p class="errorPanel" id="session-error" role="alert">@error</p>
+    }
+
+    @if (view.Question is { } question)
+    {
+        <section class="clarificationCard" id="clarification-panel" aria-live="polite" tabindex="-1" data-autofocus>
+            <p class="eyebrow">NEEDS YOUR INPUT</p><h2 id="clarification-prompt">@question.Prompt</h2>
+            <p>One answer will help the workspace runtime continue safely.</p>
+            <form method="post" asp-page="/Sessions/Details" asp-page-handler="Answer" asp-route-id="@id">
+                <input type="hidden" name="questionId" value="@question.QuestionId" />
+                @if (question.Choices.Count > 0)
+                {
+                    <div class="clarificationChoices" id="clarification-choices">
+                        @for (var index = 0; index < question.Choices.Count; index++)
+                        {
+                            <label class="choiceOption"><input type="radio" id="choice-@index" name="choice" value="@question.Choices[index]" />@question.Choices[index]</label>
+                        }
+                    </div>
+                }
+                <label for="clarification-answer">Your answer</label>
+                <textarea id="clarification-answer" name="answer" rows="3" maxlength="2000" required="@(question.Choices.Count == 0)"></textarea>
+                <div class="clarificationFooter"><button id="clarification-submit" type="submit" data-busy-label="Sending…">Continue</button></div>
+            </form>
+        </section>
+    }
+
+    @if (view.Result is { } result)
+    {
+        <section class="resultHero" id="result-panel" data-outcome="@result.Outcome" aria-live="polite">
+            <span class="resultIcon" id="result-icon" aria-hidden="true">@view.ResultIcon</span>
+            <div>
+                <p class="eyebrow">RESULT</p><h2 id="result-title">@view.ResultTitle</h2><p id="result-summary">@view.ResultSummary</p>
+                @if (view.ResultCounts is { } counts)
+                {
+                    <p class="resultCounts" id="result-counts">@counts</p>
+                }
+                @if (view.CompletedAt is { } completedAt)
+                {
+                    <p class="resultMeta" id="result-meta">Finished @Display.Time(completedAt) · Code version @Display.CodeVersion(result)</p>
+                }
+            </div>
+        </section>
+    }
+
+    <div class="runGrid">
+        <section class="contentCard" aria-labelledby="checked-heading">
+            <h2 id="checked-heading">What we checked</h2>
+            <dl class="requestSummary" id="request-summary">
+                @foreach (var (term, value) in view.Request)
+                {
+                    <dt>@term</dt><dd>@value</dd>
+                }
+            </dl>
+        </section>
+        <section class="contentCard @(view.Result is null ? "" : "secondaryProgress")" id="progress-panel" aria-labelledby="progress-heading">
+            <h2 id="progress-heading">Progress</h2>
+            <ol class="progressList" id="progress-list">
+                @foreach (var (label, done) in view.Stages)
+                {
+                    <li class="@(done ? "done" : "pending")">@label</li>
+                }
+                @if (view.CompletedAt is not null)
+                {
+                    <li class="done">Completed</li>
+                }
+            </ol>
+        </section>
+    </div>
+
+    @if (view.Result is { SafeFindings.Count: > 0 } withFindings)
+    {
+        <section class="contentCard" id="findings-panel">
+            <h2>What Quodery found</h2>
+            <div id="safe-findings"><ul>@foreach (var finding in withFindings.SafeFindings) { <li>@finding</li> }</ul></div>
+        </section>
+    }
+    @if (view.LocalEvidence is { } evidence)
+    {
+        <p class="localEvidence" id="local-evidence">@evidence</p>
+    }
+
+    @if (view.Result is not null)
+    {
+        <section class="followUpCard" id="follow-up-panel">
+            <h2>What would you like to do next?</h2>
+            <div class="actions" id="follow-up-actions">
+                @if (view.CanInvestigate)
+                {
+                    <form method="post" asp-page="/Sessions/Details" asp-page-handler="Investigate" asp-route-id="@id">
+                        <button type="submit" data-busy-label="Starting…">Investigate failure</button>
+                    </form>
+                }
+                @if (view.CanStartScenario)
+                {
+                    <a class="buttonLink secondaryButton" href="@view.ScenarioUrl">Start a test session</a>
+                }
+                @if (view.BelongsToRunView)
+                {
+                    <a class="buttonLink secondaryButton" href="@view.BackToRunUrl">Back to test session</a>
+                }
+                else
+                {
+                    <form method="post" asp-page="/Sessions/Details" asp-page-handler="RunAgain" asp-route-id="@id">
+                        <button type="submit" data-busy-label="Starting…">Run again</button>
+                    </form>
+                    @if (view.CanCheckAnother)
+                    {
+                        <a class="buttonLink secondaryButton" href="/">Check another behaviour</a>
+                    }
+                }
+                <a class="buttonLink secondaryButton" href="/">Back to testing</a>
+            </div>
+        </section>
+    }
+</div>

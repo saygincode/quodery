@@ -1,0 +1,13 @@
+@page
+@model Quodery.Web.Pages.CodeModel
+@{
+    ViewData["Title"] = "Code";
+}
+<main class="shell settingsPage" data-page="code">
+    <section class="hero compactHero"><h1>Code</h1></section>
+    @if (Model.ErrorMessage is { } error)
+    {
+        <p class="error" role="alert">@error</p>
+    }
+    <partial name="_CodePanel" model="Model.Panel" />
+</main>

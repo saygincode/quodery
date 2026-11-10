@@ -1,0 +1,29 @@
+@page
+@model RegisterModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Set up Quodery";
+}
+<main class="authShell">
+    <section class="authCard" aria-labelledby="register-title">
+        <p class="eyebrow">SET UP QUODERY</p>
+        <h1 id="register-title">Create your administrator account</h1>
+        @if (string.IsNullOrEmpty(Model.SetupToken))
+        {
+        <p class="lede">This server hasn't been set up yet. To set it up, open the setup link that the server printed when it started. Restarting the server prints a new one.</p>
+        }
+        else
+        {
+        <p class="lede">You'll be this server's administrator. You can invite your team afterwards.</p>
+        <div asp-validation-summary="ModelOnly" class="validationSummary" role="alert"></div>
+        <form method="post">
+            <input type="hidden" asp-for="ReturnUrl" />
+            <input type="hidden" name="setup" value="@Model.SetupToken" />
+            <label asp-for="Username">Username</label>
+            <input asp-for="Username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="64" autofocus required />
+            <partial name="_NewPassword" />
+            <button class="authSubmit" type="submit">Create account</button>
+        </form>
+        }
+    </section>
+</main>

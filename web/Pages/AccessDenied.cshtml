@@ -1,0 +1,14 @@
+@page
+@model AccessDeniedModel
+@{
+    ViewData["Title"] = "Access denied";
+}
+
+<main class="shell">
+    <section class="contentCard">
+        <p class="eyebrow">ACCESS DENIED</p>
+        <h1>Administrator access is required</h1>
+        <p class="lede">Your account can run and add tests, but it cannot manage users or workspaces.</p>
+        <div class="actions"><a class="buttonLink" asp-page="/Index">Return to testing</a></div>
+    </section>
+</main>

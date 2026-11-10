@@ -1,0 +1,34 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Testing";
+}
+
+<main class="shell" data-page="home">
+    <section class="hero compactHero">
+        <p class="eyebrow">TESTING / START A RUN</p>
+        <h1>What would you like to know about your tests?</h1>
+        <p class="lede">Start with an area and, optionally, a behaviour to find existing tests, review gaps, or add new tests. Your code and data stay local with your connected runtime.</p>
+    </section>
+
+    <partial name="_Readiness" model="Model.Readiness" />
+
+    <section class="dashboardCard explorerSection" id="flow-run_tests" aria-labelledby="explorer-heading">
+        <p class="eyebrow">START A RUN</p><h2 id="explorer-heading">Area and behaviour</h2>
+        <p>Start a test session to explore existing tests and choose what to do next.</p>
+        <form method="post">
+            <input type="hidden" name="project_id" value="@Model.ProjectId" />
+            <label for="run-target">Area</label>
+            <input id="run-target" name="target" value="@Model.Target" maxlength="200" required placeholder="Account settings, subscriptions, or checkout" />
+            <label for="run-focus">Behaviour <span>(optional)</span></label>
+            <textarea id="run-focus" name="behaviour" maxlength="2000" rows="3" placeholder="For example: upgrading from Basic to Pro">@Model.Behaviour</textarea>
+            <p class="fieldHelp">Finding tests doesn't run anything. Next, you choose which tests to run, review gaps, or request a new test.</p>
+            <p class="offlineNote" data-offline-note hidden="@Model.Readiness.IsReady">The workspace connection is offline, so discovery cannot start yet.</p>
+            <div class="actions"><button type="submit" data-requires-ready data-busy-label="Starting your check…" disabled="@(!Model.Readiness.IsReady)">Find tests</button></div>
+            @if (Model.ErrorMessage is { } error)
+            {
+                <p class="error" role="alert">@error</p>
+            }
+        </form>
+    </section>
+</main>

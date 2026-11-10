@@ -1,0 +1,201 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "summary",
+    "public_test_description",
+    "tested",
+    "observations",
+    "executions",
+    "limitations",
+    "findings",
+    "question"
+  ],
+  "properties": {
+    "status": {
+      "enum": [
+        "completed",
+        "needs_input",
+        "out_of_scope"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "public_test_description": {
+      "type": ["string", "null"],
+      "maxLength": 160
+    },
+    "tested": {
+      "type": "boolean"
+    },
+    "observations": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "maxLength": 2048
+      }
+    },
+    "executions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "test",
+          "outcome",
+          "exit_code",
+          "artefacts",
+          "test_id"
+        ],
+        "properties": {
+          "test": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "outcome": {
+            "enum": [
+              "passed",
+              "failed",
+              "error"
+            ]
+          },
+          "exit_code": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "artefacts": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "string",
+              "maxLength": 512
+            }
+          },
+          "test_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 80
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "enum": [
+          "required_tool_unavailable",
+          "service_unavailable",
+          "operation_not_permitted",
+          "workspace_not_writable",
+          "configuration_invalid",
+          "timed_out",
+          "other_environment_limitation"
+        ]
+      }
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "summary",
+            "public_summary",
+            "category",
+            "confidence",
+            "reproducibility",
+            "severity"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string",
+              "maxLength": 8192
+            },
+            "public_summary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 280
+            },
+            "category": {
+              "enum": [
+                "missing_coverage",
+                "edge_cases",
+                "error_handling",
+                "integration",
+                "accessibility",
+                "security",
+                "performance",
+                "other"
+              ]
+            },
+            "confidence": {
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "reproducibility": {
+              "enum": [
+                "not_executed",
+                "consistent",
+                "intermittent"
+              ]
+            },
+            "severity": {
+              "enum": [
+                "info",
+                "low",
+                "medium",
+                "high",
+                "critical"
+              ]
+            }
+          }
+      }
+    },
+    "question": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "prompt",
+            "choices"
+          ],
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "choices": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

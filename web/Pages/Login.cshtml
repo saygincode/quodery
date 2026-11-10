@@ -1,0 +1,23 @@
+@page
+@model LoginModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Sign in";
+}
+<main class="authShell">
+    <section class="authCard" aria-labelledby="login-title">
+        <p class="eyebrow">WELCOME TO QUODERY</p>
+        <h1 id="login-title">Sign in</h1>
+        <div asp-validation-summary="ModelOnly" class="validationSummary" role="alert"></div>
+        <form method="post">
+            <input type="hidden" asp-for="ReturnUrl" />
+            <label asp-for="Username">Username</label>
+            <input asp-for="Username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="64" autofocus required />
+            <label asp-for="Password">Password</label>
+            <input asp-for="Password" type="password" autocomplete="current-password" maxlength="128" required />
+            <button class="authSubmit" type="submit">Sign in</button>
+        </form>
+        <p class="fieldHelp">Forgot your password? Ask your administrator to delete your account and invite you again.</p>
+        <p class="fieldHelp">New here? Ask your administrator for an invitation.</p>
+    </section>
+</main>

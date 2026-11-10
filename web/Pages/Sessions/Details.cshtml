@@ -1,0 +1,19 @@
+@page "/sessions/{id}"
+@model Quodery.Web.Pages.Sessions.DetailsModel
+@{
+    ViewData["Title"] = "Test run";
+    ViewData["SidebarInert"] = Model.Run?.ShowBanner == true;
+    var backUrl = Model.Single?.Job?.RunId is { } runId ? Quodery.Web.Pages.Sessions.DetailsModel.SessionUrl(runId) : "/";
+}
+<main class="shell sessionShell" data-page="session">
+    <a class="backLink" href="@backUrl" inert="@(Model.Run?.ShowBanner == true)" data-inert-while-busy>← Back to testing</a>
+    @if (Model.Run is not null)
+    {
+        <partial name="_RunLive" model="Model" />
+    }
+    else
+    {
+        <partial name="_SessionLive" model="Model" />
+    }
+    <p class="connectionNote" id="live-connection-note" role="status" data-live-note hidden>Updates are unavailable. What's shown remains visible; updates will retry.</p>
+</main>

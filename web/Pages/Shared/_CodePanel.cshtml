@@ -1,0 +1,68 @@
+@model Quodery.Web.Pages.CodePanel
+@{
+    var status = Model.State.Status;
+    var disabled = !Model.Connected || Model.State.Working;
+    var otherBranches = status.Branches.Where(branch => branch != status.Branch).ToArray();
+    var current = status.Branch ?? status.Commit?[..Math.Min(12, status.Commit.Length)] ?? "No commits yet";
+    var proposedTests = status.ProposedTests switch { 0 => "", 1 => "Includes 1 proposed test. ", var count => $"Includes {count} proposed tests. " };
+}
+@* Refreshed in place by site.js, which keeps typed text and leaves an unchanged panel alone. *@
+<section class="adminCard" id="code-panel" aria-labelledby="code-heading"
+    data-live="@Url.Page("/Code", "Panel", new { project_id = Model.ProjectId })" data-live-interval="@(Model.State.Working ? 2000 : 10000)" data-version="@Model.Version">
+    <div class="settingRow">
+        <div class="settingSummary">
+            <h2 id="code-heading">@current</h2>
+            <form method="post" asp-page="/Code" asp-page-handler="Pull" asp-route-project_id="@Model.ProjectId">
+                <button type="submit" class="settingToggle" disabled="@disabled" data-busy-label="Getting latest…">Get latest</button>
+            </form>
+        </div>
+        @if (Model.State.Working)
+        {
+            <p class="settingsMessage" role="status">Working…</p>
+        }
+        else if (!Model.Connected)
+        {
+            <p class="offlineNote">The runtime is offline. This is what it last reported, and nothing can change until it reconnects.</p>
+        }
+        else if (Model.State.LastResult is { } result)
+        {
+            <p class="settingsMessage" role="status" data-tone="@(result == Quodery.Protocol.GitResultCodes.Ok ? null : "error")">@Display.GitResult(result)</p>
+        }
+    </div>
+    @if (otherBranches.Length > 0)
+    {
+        <form method="post" asp-page="/Code" asp-page-handler="Switch" asp-route-project_id="@Model.ProjectId" class="settingRow inviteCreateRow">
+            <label for="code-branch">Switch branch
+                <select id="code-branch" name="branch" required>
+                    @foreach (var branch in otherBranches)
+                    {
+                        <option value="@branch">@branch</option>
+                    }
+                </select>
+            </label>
+            <button type="submit" class="secondaryButton" disabled="@disabled" data-busy-label="Switching…">Switch</button>
+        </form>
+    }
+    @if (status.ChangedFiles > 0)
+    {
+        <div class="settingRow">
+            <span class="settingName">@Display.UncommittedFiles(status.ChangedFiles)</span>
+            <p class="fieldHelp">@(proposedTests)Commit or discard them before switching branch or getting the latest changes.</p>
+            <form method="post" asp-page="/Code" asp-page-handler="Commit" asp-route-project_id="@Model.ProjectId" class="inviteCreateRow">
+                <label for="code-commit-message">Commit message<input id="code-commit-message" name="message" maxlength="@Quodery.Protocol.ProtocolConstants.MaximumCommitMessageLength" autocomplete="off" required /></label>
+                <button type="submit" class="secondaryButton" disabled="@disabled" data-busy-label="Committing…">Commit all</button>
+            </form>
+        </div>
+        <details class="settingRow" id="code-discard">
+            <summary class="settingSummary">
+                <span class="settingName">Discard changes</span>
+                <span class="settingToggle" data-tone="danger">Discard</span>
+            </summary>
+            <form method="post" asp-page="/Code" asp-page-handler="Discard" asp-route-project_id="@Model.ProjectId" class="settingsForm">
+                <label for="code-discard-confirmation">Type @GitService.DiscardConfirmation to permanently delete all uncommitted changes</label>
+                <input id="code-discard-confirmation" name="confirmation" autocomplete="off" required />
+                <button type="submit" class="dangerButton" disabled="@disabled" data-busy-label="Discarding…">Discard all</button>
+            </form>
+        </details>
+    }
+</section>

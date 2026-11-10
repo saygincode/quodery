@@ -1,0 +1,82 @@
+@page
+@model Quodery.Web.Pages.WorkspacesModel
+@{
+    ViewData["Title"] = "Workspaces";
+}
+
+<main class="shell projectsShell" data-page="projects">
+    <section class="projectsHeader">
+        <div>
+            <p class="eyebrow">WORKSPACES</p>
+            <h1>Choose a workspace</h1>
+            <p class="lede">Testing and history are kept separate for each workspace.</p>
+        </div>
+        @if (Model.IsAdmin)
+        {
+            <a class="buttonLink" asp-page="/Setup">Create new workspace</a>
+        }
+    </section>
+    <section class="projectSelectionCard" aria-labelledby="project-list-heading">
+        <h2 id="project-list-heading">Your workspaces</h2>
+        @if (Model.ErrorMessage is { } error)
+        {
+            <p class="errorPanel" role="alert">@error</p>
+        }
+        <div class="projectSelectionGrid">
+            @if (Model.Projects.Count == 0)
+            {
+                <p class="emptyState">No workspaces are available. Ask an administrator to create one.</p>
+            }
+            @foreach (var project in Model.Projects)
+            {
+                var configured = project.Runtime.IsConfigured;
+                var connected = project.Runtime.Status == "connected";
+                var isCurrent = project.Id == Model.Current?.Id;
+                var href = Model.IsAdmin && !configured
+                    ? $"/Setup?project_id={Uri.EscapeDataString(project.Id)}"
+                    : $"/?project_id={Uri.EscapeDataString(project.Id)}";
+                <div class="projectSelectionItem @(isCurrent ? "current" : "")">
+                    <a class="projectSelectionLink" href="@href" aria-current="@(isCurrent ? "true" : null)">
+                        <div>
+                            <h2>@project.Name</h2>
+                            <p>@(!configured ? "Setup is not complete" : connected ? "Workspace ready" : "Workspace connection offline")</p>
+                        </div>
+                        <span class="projectSelectionStatus" data-status="@(!configured ? "setup" : project.Runtime.Status)">@(!configured ? "Needs setup" : connected ? "Ready" : "Offline")</span>
+                    </a>
+                    @if (Model.IsAdmin)
+                    {
+                        <div class="projectSelectionActions">
+                            <form method="post" asp-page-handler="Refresh" asp-route-id="@project.Id"
+                                data-confirm="Refresh the connection for @project.Name? This disconnects any connected runtime and replaces its runtime key with a new one. Your workspace and test history are kept. The old runtime process and any work already running on your machine may continue until you stop them.">
+                                <button type="submit" class="projectRefreshButton" title="Refresh connection for @project.Name" aria-label="Refresh connection for workspace @project.Name">
+                                    <lucide-icon name="refresh-cw" width="18" height="18" stroke-width="1.8" />
+                                </button>
+                            </form>
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@project.Id"
+                                data-confirm="Permanently delete &quot;@project.Name&quot; and its test history? Its runtime will be disconnected. Files and reports on your workspace machine will remain.">
+                                <button type="submit" class="projectDeleteButton" title="Delete @project.Name" aria-label="Delete workspace @project.Name">
+                                    <lucide-icon name="trash" width="18" height="18" stroke-width="1.8" />
+                                </button>
+                            </form>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+    @if (Model.RefreshedKey is { } key)
+    {
+        <dialog class="projectRefreshDialog" aria-labelledby="project-refresh-heading" data-show-modal>
+            <h2 id="project-refresh-heading">New runtime key for @(Model.RefreshedProject?.Name ?? "the workspace")</h2>
+            <p>The previous runtime key no longer works. Use this new key to reconnect your runtime.</p>
+            <p><strong>This is the only time you will see this key.</strong> Copy and save it now. After you close this dialog, it cannot be retrieved.</p>
+            <label for="project-refresh-token">New runtime key</label>
+            <textarea id="project-refresh-token" rows="3" readonly spellcheck="false" autocomplete="off">@key.Token</textarea>
+            <p>Stop the old runtime, set <code>QUODERY_RUNTIME_KEY</code> to this key, and start the runtime again to connect it to this workspace.</p>
+            <div class="projectRefreshActions">
+                <button class="secondaryButton" type="button" data-copy-target="project-refresh-token">Copy key</button>
+                <form method="dialog"><button type="submit">Done</button></form>
+            </div>
+        </dialog>
+    }
+</main>

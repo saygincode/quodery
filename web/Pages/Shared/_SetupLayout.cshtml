@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - Quodery</title>
+    <meta name="description" content="Clear, privacy-first product testing" />
+    <link rel="icon" type="image/png" href="~/qicon.png" asp-append-version="true" />
+    <link rel="preload" href="~/vendor/inter/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="setupBody">
+    <header class="setupTopbar">
+        <div class="brand" aria-label="Quodery"><img class="brandMark" src="~/qicon.png" asp-append-version="true" alt="" /><span>Quodery</span></div>
+        <span>New workspace setup</span>
+    </header>
+    @RenderBody()
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

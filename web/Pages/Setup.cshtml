@@ -1,0 +1,195 @@
+@page
+@model Quodery.Web.Pages.SetupModel
+@{
+    Layout = "_SetupLayout";
+    ViewData["Title"] = "Create workspace";
+    var step = Model.CurrentStep;
+    var stepIndex = step is null ? -1 : Quodery.Web.Pages.SetupModel.Steps.ToList().FindIndex(item => item.Name == step);
+}
+
+<main class="shell setupShell" data-page="setup">
+    <section class="setupHero">
+        <a class="setupExit" href="/Workspaces" hidden="@(!Model.ShowExit)">← Back to workspaces</a>
+        <div>
+            <p class="eyebrow">NEW WORKSPACE</p>
+            <h1>Create a new workspace</h1>
+            <p class="lede">Name the workspace, then connect the machine where its code and automated tests are available.</p>
+        </div>
+    </section>
+
+    <div class="setupLayout">
+        <nav class="setupProgress" aria-label="Setup progress">
+            <ol>
+                @for (var index = 0; index < Quodery.Web.Pages.SetupModel.Steps.Count; index++)
+                {
+                    var item = Quodery.Web.Pages.SetupModel.Steps[index];
+                    <li class="@(index == stepIndex ? "current" : index < stepIndex ? "complete" : "")" aria-current="@(index == stepIndex ? "step" : null)"><span>@(index + 1)</span>@item.Label</li>
+                }
+            </ol>
+        </nav>
+
+        <section class="setupCard" aria-live="polite">
+            @if (step is null)
+            {
+                <div class="errorPanel" role="alert">@Model.ErrorMessage</div>
+            }
+            else if (step == "welcome")
+            {
+            <div data-setup-step="welcome">
+                <p class="eyebrow">STEP 1 OF 6</p>
+                <h2>Your code stays on your machine</h2>
+                <p>The Quodery runtime runs on the machine with your code and coding agent, and connects out to this server. Source code, logs and detailed reports stay on that machine. New tests are left in the workspace, uncommitted, for you to review.</p>
+                <div class="setupDiagram" aria-label="The browser talks to Quodery, which connects to the runtime beside your workspace">
+                    <span>Browser</span><b aria-hidden="true">→</b><span>Quodery</span><b aria-hidden="true">→</b><span>Runtime + workspace</span>
+                </div>
+                <p class="fieldHelp">You will need a Linux machine with the code checked out, and Codex or Claude Code installed and authenticated. Run the runtime under its own operating-system account, because the agent can write to the workspace.</p>
+                <div class="actions">
+                    <a class="buttonLink" href="@Model.StepUrl("project")">Create workspace</a>
+                </div>
+            </div>
+            }
+            else if (step == "project")
+            {
+            <div data-setup-step="project">
+                <p class="eyebrow">STEP 2 OF 6</p>
+                <h2>Name your workspace</h2>
+                <p>Choose a name people will recognise. Each workspace has its own connection and test-run history.</p>
+                @if (Model.Project is { } project)
+                {
+                    <label for="setup-project">Workspace</label>
+                    <select id="setup-project" disabled><option>@project.Name</option></select>
+                    <p class="fieldHelp">Continue setting up this workspace.</p>
+                    <div class="actions">
+                        <a class="buttonLink" href="@Model.StepUrl("install")">Continue</a>
+                        <a class="buttonLink secondaryButton" href="@Model.StepUrl("welcome")">Back</a>
+                    </div>
+                }
+                else
+                {
+                    <form method="post" asp-page-handler="Project">
+                        <label for="setup-project-name">Workspace name</label>
+                        <input id="setup-project-name" name="name" maxlength="100" placeholder="My product" required autofocus />
+                        <div class="actions">
+                            <button type="submit" data-busy-label="Creating workspace…">Continue</button>
+                            <a class="buttonLink secondaryButton" href="@Model.StepUrl("welcome")">Back</a>
+                        </div>
+                    </form>
+                }
+                @if (Model.ErrorMessage is { } projectError)
+                {
+                    <p class="error" role="alert">@projectError</p>
+                }
+            </div>
+            }
+            else if (step == "install")
+            {
+            <div data-setup-step="install">
+                <p class="eyebrow">STEP 3 OF 6</p>
+                <h2>Install Quodery</h2>
+                <p>Place the <code>quodery</code> executable on the machine where the workspace's code is available. It's the same executable as the server; <code>quodery runtime</code> runs the agent connection. Linux x64 only for now.</p>
+                <ol class="instructionList">
+                    <li>
+                        <a href="@Model.RuntimeDownloadUrl" target="_blank" rel="noopener noreferrer">Download Quodery for Linux x64 from GitHub</a><span> and place it on the workspace machine.</span>
+                    </li>
+                    <li>Make it executable: <code>chmod +x ./quodery</code></li>
+                    <li>Confirm Codex or Claude Code is installed and authenticated under the account that will run the runtime. Configure the selected agent locally to allow the required test commands and file writes without interactive approval. See the project README for examples.</li>
+                </ol>
+                <div class="setupNotice"><strong>No .NET installation is required</strong> when using the precompiled, self-contained executable.</div>
+                <div class="actions">
+                    <a class="buttonLink" href="@Model.StepUrl("connect")">Quodery is installed</a>
+                    <a class="buttonLink secondaryButton" href="@Model.StepUrl("project")">Back</a>
+                </div>
+            </div>
+            }
+            else if (step == "connect")
+            {
+            <div data-setup-step="connect">
+                <p class="eyebrow">STEP 4 OF 6</p>
+                <h2>Connect the runtime</h2>
+                <p>Create a runtime key, then run the generated command on the machine containing your workspace.</p>
+                @if (Model.Command is { } command)
+                {
+                    <div class="commandPanel">
+                        <strong>Copy and run this command now</strong>
+                        <p>This runtime key is shown once. Keep <code>QUODERY_RUNTIME_KEY</code> set to it whenever the runtime starts, and keep it out of source control and shared logs.</p>
+                        <pre><code id="setup-command">@command</code></pre>
+                        <div class="actions">
+                            <button type="button" data-copy-target="setup-command">Copy command</button>
+                            <a class="buttonLink secondaryButton" href="@Model.StepUrl("waiting")">I started the runtime</a>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    if (Model.ResumeKey)
+                    {
+                        <div class="setupNotice">A previous connection command was created, but runtime keys are only shown once. Create a new command to continue; it replaces the earlier key.</div>
+                    }
+                    <form method="post" asp-page-handler="Command" asp-route-project_id="@Model.Project?.Id">
+                        <label for="setup-workspace">Absolute path to the workspace</label>
+                        <input id="setup-workspace" name="WorkspaceRoot" value="@Model.WorkspaceRoot" required />
+                        <label for="setup-agent-provider">Coding agent</label>
+                        <select id="setup-agent-provider" name="AgentProvider" data-agent-provider>
+                            @foreach (var (value, label) in new[] { ("codex", "Codex"), ("claude", "Claude Code") })
+                            {
+                                if (value == Model.AgentProvider) { <option value="@value" selected>@label</option> }
+                                else { <option value="@value">@label</option> }
+                            }
+                        </select>
+                        <details class="advancedSetup">
+                            <summary>Advanced options</summary>
+                            <label for="setup-agent-binary">Agent executable</label>
+                            <input id="setup-agent-binary" name="AgentBinary" value="@Model.AgentBinary" data-agent-binary />
+                        </details>
+                        <div class="actions">
+                            <button type="submit" data-busy-label="Creating…">Create connection command</button>
+                            <a class="buttonLink secondaryButton" href="@Model.StepUrl("install")">Back</a>
+                        </div>
+                    </form>
+                }
+                @if (Model.ErrorMessage is { } credentialError)
+                {
+                    <p class="error" role="alert">@credentialError</p>
+                }
+            </div>
+            }
+            else if (step == "waiting")
+            {
+            <div data-setup-step="waiting">
+                <p class="eyebrow">STEP 5 OF 6</p>
+                <h2>Waiting for the workspace connection</h2>
+                <partial name="_SetupConnection" model="Model" />
+                <p class="fieldHelp">This page checks automatically. Connection can take a few seconds.</p>
+                <details class="advancedSetup">
+                    <summary>Troubleshooting</summary>
+                    <ul>
+                        <li>Confirm the runtime process is still running.</li>
+                        <li>Confirm the machine can make outbound HTTPS requests to this server.</li>
+                        <li>Check that the credential was copied in full.</li>
+                        <li>Run <code>quodery runtime --help</code> to review supported options.</li>
+                    </ul>
+                </details>
+                <div class="actions">
+                    <a class="buttonLink secondaryButton" href="@Model.StepUrl("waiting")">Check again</a>
+                    <a class="buttonLink secondaryButton" href="@Model.StepUrl("connect")">Create another command</a>
+                </div>
+            </div>
+            }
+            else if (step == "complete")
+            {
+            <div data-setup-step="complete">
+                <p class="eyebrow">STEP 6 OF 6</p>
+                <div class="setupSuccess"><span aria-hidden="true">✓</span><div><h2>Your workspace is ready</h2><p>@Model.Project?.Name is connected and ready to receive a test request.</p></div></div>
+                <dl class="setupSummary">
+                    <dt>Workspace</dt><dd>@Model.Project?.Name</dd>
+                    <dt>Connection</dt><dd>Connected</dd>
+                    <dt>Last seen</dt><dd>@if (Model.Connection?.LastSeenAt is { } seen) { <text>@Display.Time(seen)</text> } else { <text>Connected now</text> }</dd>
+                </dl>
+                <div class="actions">
+                    <a class="buttonLink" href="/Workspaces">Back to workspaces</a>
+                </div>
+            </div>
+            }
+        </section>
+    </div>
+</main>

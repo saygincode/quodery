@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- A library: the `quodery` executable (cli/) runs it as `quodery runtime`, and beside the server as a
+       serving runtime. It knows nothing of the server. -->
+  <PropertyGroup>
+    <RootNamespace>Quodery.Runtime</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../protocol/Quodery.Protocol.csproj" />
+    <None Update="Agent/final-output.schema.json"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Update="Agent/test-catalogue.schema.json"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

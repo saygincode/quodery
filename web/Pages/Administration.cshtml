@@ -1,0 +1,125 @@
+@page
+@model Quodery.Web.Pages.AdministrationModel
+@{
+    ViewData["Title"] = "Settings";
+    var isAdmin = Model.IsAdmin;
+    var minimumPassword = UserAuthentication.MinimumPasswordLength;
+    var maximumPassword = UserAuthentication.MaximumPasswordLength;
+}
+<main class="shell settingsPage" data-page="administration">
+    <section class="hero compactHero"><h1>Settings</h1></section>
+    @if (isAdmin && Model.CertificateExpiresAt is { } expiresAt)
+    {
+    <section class="adminCard" aria-labelledby="certificate-heading">
+        <h2 id="certificate-heading">TLS certificate expires soon</h2>
+        <p class="error">The server's certificate expires on @expiresAt.ToString("u"). Replace the certificate files and restart the server before then, or browsers and runtimes can't connect.</p>
+    </section>
+    }
+    <section class="adminCard" aria-labelledby="account-heading">
+        <h2 id="account-heading">Account</h2>
+        <div class="settingRow">
+            <div class="settingSummary">
+                <span class="settingName">Username</span>
+                <span class="settingValue">@(User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "")</span>
+            </div>
+        </div>
+        <details class="settingRow" open="@(Model.ErrorFor == "password")">
+            <summary class="settingSummary">
+                <span class="settingName">Password</span>
+                <span class="settingToggle">Change</span>
+            </summary>
+            <form method="post" asp-page-handler="ChangePassword" class="settingsForm">
+                <label for="current-password">Current password</label>
+                <input id="current-password" name="currentPassword" type="password" autocomplete="current-password" maxlength="@maximumPassword" required />
+                <label for="new-password">New password</label>
+                <input id="new-password" name="newPassword" type="password" autocomplete="new-password" minlength="@minimumPassword" maxlength="@maximumPassword" required />
+                <label for="confirm-password">Confirm new password</label>
+                <input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" minlength="@minimumPassword" maxlength="@maximumPassword" required />
+                <p class="fieldHelp">At least @minimumPassword characters. You'll be signed out everywhere and asked to sign in again.</p>
+                <button type="submit">Change password</button>
+            </form>
+            @if (Model.ErrorFor == "password")
+            {
+                <p class="settingsMessage" data-tone="error" role="alert">@Model.Error</p>
+            }
+        </details>
+        <div class="settingRow">
+            <div class="settingSummary">
+                <span class="settingName">Sessions</span>
+                <form method="post" asp-page-handler="SignOutEverywhere">
+                    <button type="submit" class="settingToggle">Sign out on all devices</button>
+                </form>
+            </div>
+            @if (Model.ErrorFor == "sessions")
+            {
+                <p class="settingsMessage" data-tone="error" role="alert">@Model.Error</p>
+            }
+        </div>
+    </section>
+    @if (isAdmin)
+    {
+    <section class="adminCard" aria-labelledby="team-heading">
+        <h2 id="team-heading">Team</h2>
+        <form method="post" asp-page-handler="Invite" class="inviteCreateRow">
+            <label for="invite-username">Invite by username<input id="invite-username" name="username" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" required /></label>
+            <button type="submit">Create invitation link</button>
+        </form>
+        <p class="fieldHelp">Quodery doesn't send email, so you pass the one-time link on yourself. If someone forgets their password, delete their account and invite them again.</p>
+        @if (Model.TeamError is { } teamError)
+        {
+            <p class="error" role="alert">@teamError</p>
+        }
+        @if (Model.FlashNotice is { } notice)
+        {
+            <p class="settingsMessage" role="status">@notice</p>
+        }
+        <div class="memberList">
+            @if (Model.Members is null)
+            {
+                <p class="error">Team members could not be loaded.</p>
+            }
+            else
+            {
+                foreach (var user in Model.Members.Users)
+                {
+                    <div class="memberRow">
+                        <div><strong>@user.Username</strong><span>@if (user.LastLoginAt is { } signedIn) { <text>last signed in @Display.Time(signedIn)</text> } else { <text>has not signed in</text> }</span></div>
+                        @if (user.Role == "user")
+                        {
+                            <form method="post" asp-page-handler="DeleteMember" asp-route-userId="@user.Id"
+                                data-confirm="Permanently delete the account for @user.Username? They will lose access to this server.">
+                                <input type="hidden" name="username" value="@user.Username" />
+                                <button type="submit" class="dangerButton" aria-label="Delete member: @user.Username">Delete</button>
+                            </form>
+                        }
+                    </div>
+                }
+                foreach (var invitation in Model.Members.Invitations)
+                {
+                    <div class="memberRow">
+                        <div><strong>@invitation.Username</strong><span>invited, expires @Display.Time(invitation.ExpiresAt)</span></div>
+                        <form method="post" asp-page-handler="CancelInvitation" asp-route-invitationId="@invitation.Id"
+                            data-confirm="Cancel the invitation for @invitation.Username? The invitation link will stop working.">
+                            <input type="hidden" name="username" value="@invitation.Username" />
+                            <button type="submit" class="dangerButton" aria-label="Cancel invitation: @invitation.Username">Cancel</button>
+                        </form>
+                    </div>
+                }
+            }
+        </div>
+    </section>
+    }
+    @if (Model.Link is { } link)
+    {
+        <dialog class="projectRefreshDialog" aria-labelledby="invitation-heading" data-show-modal>
+            <h2 id="invitation-heading">Invitation for @link.Username</h2>
+            <p>Send this link to @link.Username. It works once and expires @Display.Time(link.ExpiresAt).</p>
+            <input id="invitation-link" value="@link.Url" readonly spellcheck="false" autocomplete="off" aria-label="Invitation link" data-select-on-load />
+            <p>It won't be shown again. If it's lost, cancel the invitation and create a new one.</p>
+            <div class="projectRefreshActions">
+                <button class="secondaryButton" type="button" data-copy-target="invitation-link">Copy link</button>
+                <form method="dialog"><button type="submit">Done</button></form>
+            </div>
+        </dialog>
+    }
+</main>

@@ -1,0 +1,46 @@
+@page
+@model Quodery.Web.Pages.HistoryModel
+@{
+    ViewData["Title"] = "Runs";
+}
+<main class="shell" data-page="history">
+    <section class="hero compactHero"><p class="eyebrow">RUNS</p><h1>Test runs</h1><p class="lede">See what was checked recently and what happened.</p></section>
+    <section class="historyCard" aria-labelledby="history-heading">
+        <div class="sectionHeading"><h2 id="history-heading">Previous test runs</h2>
+            <form class="historyFilters" method="get">
+                <input type="hidden" name="project_id" value="@Model.Project?.Id" />
+                <label class="compactFilter">Outcome<select id="history-filter" name="outcome" data-autosubmit>
+                    @foreach (var (value, label) in Quodery.Web.Pages.HistoryModel.Filters)
+                    {
+                        if (value == Model.Outcome) { <option value="@value" selected>@label</option> }
+                        else { <option value="@value">@label</option> }
+                    }
+                </select></label>
+                <noscript><button type="submit" class="secondaryButton">Show</button></noscript>
+            </form>
+        </div>
+        <div id="history-list">
+            @if (Model.Project is null)
+            {
+                <p class="emptyState">No workspaces or test runs yet.</p>
+            }
+            else if (Model.Rows.Count == 0)
+            {
+                <p class="emptyState">No runs yet. Describe an area or behaviour to discover relevant tests.</p>
+            }
+            else
+            {
+                <div class="runList">
+                    @foreach (var row in Model.Rows)
+                    {
+                        <a class="runRow" href="/sessions/@Uri.EscapeDataString(row.Item.Id)">
+                            <span><strong>@row.Item.Goal</strong><small>@Display.TaskName(row.Item.TaskType)</small></span>
+                            @Display.Time(row.Item.CreatedAt)
+                            <span class="runOutcome" data-outcome="@row.Outcome">@row.OutcomeLabel</span>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+</main>

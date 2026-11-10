@@ -1,0 +1,20 @@
+@page
+@model AcceptInviteModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Accept invitation";
+}
+<main class="authShell">
+    <section class="authCard" aria-labelledby="invite-title">
+        <p class="eyebrow">TEAM INVITATION</p>
+        <h1 id="invite-title">Join Quodery</h1>
+        <p class="lede">Choose a password to finish joining your team. @if (Model.Username is { } username) { <text>Your username is <strong>@username</strong>; you'll sign in with it.</text> }</p>
+        <div asp-validation-summary="ModelOnly" class="validationSummary" role="alert"></div>
+        <form method="post">
+            <input type="hidden" asp-for="Token" />
+            <partial name="_NewPassword" />
+            <button class="authSubmit" type="submit">Join team</button>
+        </form>
+        <p class="authSwitch">Already have an account? <a asp-page="/Login">Sign in</a></p>
+    </section>
+</main>

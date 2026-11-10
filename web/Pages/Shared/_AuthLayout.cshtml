@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>@ViewData["Title"] - Quodery</title>
+    <meta name="description" content="Ask questions of your team's automated test suite in plain language" />
+    <link rel="icon" type="image/png" href="~/qicon.png" asp-append-version="true" />
+    <link rel="preload" href="~/vendor/inter/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="authBody">
+    <header class="authHeader">
+        <a class="brand" asp-page="/Login" aria-label="Quodery"><img class="brandMark" src="~/qicon.png" asp-append-version="true" alt="" /><span>Quodery</span></a>
+        <span>Your test suite, in plain language</span>
+    </header>
+    @RenderBody()
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

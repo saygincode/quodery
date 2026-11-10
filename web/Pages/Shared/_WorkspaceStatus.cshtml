@@ -1,0 +1,26 @@
+@model WorkspaceStatus
+@inject ServingMode Serving
+@* Refreshed in place by site.js, so the runtime's state and version stay current on every page. *@
+<div class="sidebarContext" id="workspace-status" data-live="@Url.Page("/WorkspaceStatus", new { project_id = Model.Project?.Id })" data-live-interval="10000">
+    <span class="sidebarSectionLabel">Workspace</span>
+    <div class="currentProjectRow">
+        <span class="runtimeState" data-state="@Model.State" role="img" aria-label="@Model.StateLabel" title="@Model.StateLabel"><span class="runtimeDot" aria-hidden="true"></span></span>
+        <strong class="currentProjectName">@(Model.Project?.Name ?? "No workspace")</strong>
+    </div>
+    @* A serving runtime is the server's own executable, so its version always matches. *@
+    <div class="runtimeVersionStatus" data-status="@Model.VersionStatus" title="@Model.VersionLabel" hidden="@(Model.Project is null || Serving.ServesRuntime)">
+        <lucide-icon name="square-terminal" class="runtimeIcon" />
+        <span class="runtimeVersion" aria-label="@Model.VersionLabel">@Model.VersionText</span>
+    </div>
+    @if (Model.BranchText is { } branch)
+    {
+        <a class="sidebarBranch" href="@Url.Page("/Code", new { project_id = Model.Project!.Id })" title="Current branch: @branch">
+            <lucide-icon name="git-branch" class="sidebarIcon" />
+            <span>@branch</span>
+            @if (Model.ChangedFiles > 0)
+            {
+                <span class="sidebarBranchChanges" role="img" aria-label="@Display.UncommittedFiles(Model.ChangedFiles)" title="@Display.UncommittedFiles(Model.ChangedFiles)">@Model.ChangedFiles.ToString("N0")</span>
+            }
+        </a>
+    }
+</div>

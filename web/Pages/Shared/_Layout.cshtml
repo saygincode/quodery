@@ -1,0 +1,65 @@
+@inject WorkspaceContext Workspace
+@inject ProjectService Projects
+@inject ServingMode Serving
+@{
+    var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
+    var username = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "Account";
+    var initials = char.ToUpperInvariant(username[0]).ToString();
+    await Workspace.EnsureLoadedAsync(Context.RequestAborted);
+    var workspaceStatus = await WorkspaceStatus.LoadAsync(Projects, Workspace.Current, Context.RequestAborted);
+    var testingUrl = Workspace.Current is { } current ? $"/?project_id={Uri.EscapeDataString(current.Id)}" : "/";
+    var historyUrl = Workspace.Current is { } selected ? $"/History?project_id={Uri.EscapeDataString(selected.Id)}" : "/History";
+    var sidebarInert = ViewData["SidebarInert"] is true;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - Quodery</title>
+    <meta name="description" content="Ask questions of your team's automated test suite in plain language" />
+    <link rel="icon" type="image/png" href="~/qicon.png" asp-append-version="true" />
+    <link rel="preload" href="~/vendor/inter/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <aside class="sidebar" inert="@sidebarInert">
+        <div class="sidebarHeader">
+            <a class="brand" href="@testingUrl" aria-label="Quodery home"><img class="brandMark" src="~/qicon.png" asp-append-version="true" alt="" /><span>Quodery</span></a>
+        </div>
+        <nav class="primaryNav" aria-label="Main navigation">
+            <div class="navGroup">
+                <span class="sidebarSectionLabel">Operate</span>
+                <a class="@((currentPage == "/Index" || currentPage.StartsWith("/Sessions/")) ? "active" : "")" href="@testingUrl"><lucide-icon name="list-checks" class="sidebarIcon" />Start a run</a>
+                <a class="@(currentPage == "/History" ? "active" : "")" href="@historyUrl"><lucide-icon name="clock" class="sidebarIcon" />Previous runs</a>
+            </div>
+            @* A serving runtime's server has only its own workspace, so there's nothing to choose. *@
+            @if (!Serving.ServesRuntime)
+            {
+            <div class="navGroup">
+                <span class="sidebarSectionLabel">Workspace</span>
+                <a class="@(currentPage == "/Workspaces" ? "active" : "")" asp-page="/Workspaces"><lucide-icon name="layout-grid" class="sidebarIcon" />Workspaces</a>
+            </div>
+            }
+            <div class="navGroup">
+                <span class="sidebarSectionLabel">Admin</span>
+                <a class="@((currentPage == "/Administration" || currentPage == "/Setup") ? "active" : "")" asp-page="/Administration"><lucide-icon name="settings" class="sidebarIcon" />Settings</a>
+            </div>
+        </nav>
+        <partial name="_WorkspaceStatus" model="workspaceStatus" />
+        <div class="sidebarFooter">
+            <details class="accountMenu">
+                <summary><span class="accountAvatar" aria-hidden="true">@initials</span><span class="accountSummary"><strong>@username</strong><span>Account</span></span><lucide-icon name="chevron-down" class="sidebarIcon accountChevron" /></summary>
+                <div class="accountMenuPanel">
+                    <strong>@username</strong>
+                    <span>@(User.IsInRole("admin") ? "Administrator" : "User")</span>
+                    <form method="post" asp-page="/Logout"><button class="sidebarSignOut" type="submit">Sign out</button></form>
+                </div>
+            </details>
+        </div>
+    </aside>
+    @RenderBody()
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
